@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
-import { X, Download, Upload, FileSpreadsheet, Database, Trash2, Info } from 'lucide-react';
+import { X, Download, Upload, FileSpreadsheet, Database, Trash2, Info, RefreshCw, CheckCircle2 } from 'lucide-react';
 import type { Asset } from '../types';
 import { downloadCSV, downloadJSON } from '../csvExport';
 import { db } from '../db';
+import type { UpdateCheckResult } from '../hooks/useServiceWorker';
 
 interface Props {
   open: boolean;
@@ -10,11 +11,39 @@ interface Props {
   assets: Asset[];
   onReplaceAll: (assets: Asset[]) => Promise<void>;
   onClearAll: () => Promise<void>;
+  updateAvailable: boolean;
+  onApplyUpdate: () => void;
+  onCheckForUpdate: () => Promise<UpdateCheckResult>;
 }
 
-export function SettingsDrawer({ open, onClose, assets, onReplaceAll, onClearAll }: Props) {
+export function SettingsDrawer({
+  open,
+  onClose,
+  assets,
+  onReplaceAll,
+  onClearAll,
+  updateAvailable,
+  onApplyUpdate,
+  onCheckForUpdate,
+}: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [justCheckedUpToDate, setJustCheckedUpToDate] = useState(false);
+
+  const handleCheckForUpdate = async () => {
+    setCheckingUpdate(true);
+    setJustCheckedUpToDate(false);
+    const result = await onCheckForUpdate();
+    setCheckingUpdate(false);
+    if (result === 'unsupported') {
+      setMessage('This browser doesn\u2019t support app updates.');
+    } else if (result === 'up-to-date') {
+      setJustCheckedUpToDate(true);
+    }
+    // 'update-found' needs no message here — updateAvailable flips true and
+    // the button below switches itself to "Install Update".
+  };
 
   const handleBackup = async () => {
     const allAssets = await db.assets.toArray();
@@ -81,6 +110,44 @@ export function SettingsDrawer({ open, onClose, assets, onReplaceAll, onClearAll
             <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800 font-medium">
               {message}
             </div>
+          )}
+
+          {/* App Update */}
+          {updateAvailable ? (
+            <button
+              onClick={onApplyUpdate}
+              className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-amber-300 bg-amber-50 active:scale-[0.98] transition-transform"
+            >
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <RefreshCw className="w-5 h-5 text-amber-700" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="font-semibold text-sm text-amber-800">Install Update</div>
+                <div className="text-xs text-amber-600">A new version is ready — tap to reload</div>
+              </div>
+            </button>
+          ) : (
+            <button
+              onClick={handleCheckForUpdate}
+              disabled={checkingUpdate}
+              className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-gray-200 active:scale-[0.98] transition-transform hover:border-blue-400 disabled:opacity-60"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                {justCheckedUpToDate ? (
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                ) : (
+                  <RefreshCw className={`w-5 h-5 text-blue-600 ${checkingUpdate ? 'animate-spin' : ''}`} />
+                )}
+              </div>
+              <div className="text-left flex-1">
+                <div className="font-semibold text-sm text-gray-900">
+                  {checkingUpdate ? 'Checking Netlify\u2026' : justCheckedUpToDate ? 'You\u2019re up to date' : 'Check for Updates'}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {justCheckedUpToDate ? 'Latest version is already installed' : 'Pull the latest deploy without reinstalling'}
+                </div>
+              </div>
+            </button>
           )}
 
           {/* CSV Export */}
