@@ -11,15 +11,18 @@ import {
   AlertTriangle,
   Zap,
 } from 'lucide-react';
-import type { Asset, EquipmentClass, RetestInterval, TestStatus } from '../types';
+import type { Asset, EquipmentClass, RetestInterval, SiteLocation, TestStatus } from '../types';
 import { CLASS_THRESHOLDS, DEFECT_REASONS, ACTIONS_TAKEN, QUICK_PRESETS, calculateNextTestDue, generatePassValues, nextTagId, splitTagId, todayString } from '../compliance';
 import { getHighestTagId, tagIdExists } from '../db';
 import type { JobInfoState } from '../hooks/useJobInfo';
+import { EntityPicker } from './EntityPicker';
 
 interface Props {
   jobInfo: JobInfoState;
   subLocation: string;
   onSubLocationChange: (v: string) => void;
+  locations: SiteLocation[];
+  onAddLocation: (name: string) => Promise<SiteLocation | undefined>;
   retestInterval: RetestInterval;
   onRetestIntervalChange: (v: RetestInterval) => void;
   editingAsset: Asset | null;
@@ -61,6 +64,8 @@ export function TagEntryForm({
   jobInfo,
   subLocation,
   onSubLocationChange,
+  locations,
+  onAddLocation,
   retestInterval,
   onRetestIntervalChange,
   editingAsset,
@@ -346,20 +351,20 @@ export function TagEntryForm({
         </div>
       </div>
 
-      {/* Sub-Location (sticky) */}
-      <div>
-        <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Sub-Location (remembers between tags)</label>
-        <div className="relative mt-0.5">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={subLocation}
-            onChange={(e) => onSubLocationChange(e.target.value)}
-            placeholder="e.g. Kitchenette, Workshop"
-            className="w-full h-11 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
+      {/* Sub-Location (rooms/areas saved against the current site) */}
+      <EntityPicker<SiteLocation>
+        label="Sub-Location (remembers between tags)"
+        icon={MapPin}
+        placeholder="e.g. Kitchenette, Workshop"
+        value={subLocation}
+        items={locations}
+        getName={(l) => l.name}
+        disabled={!jobInfo.siteId}
+        disabledHint="Select a site above first"
+        onChangeText={onSubLocationChange}
+        onSelect={(loc) => onSubLocationChange(loc.name)}
+        onAddNew={onAddLocation}
+      />
 
       {/* Equipment Class Selector */}
       <div>
