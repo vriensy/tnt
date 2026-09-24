@@ -4,12 +4,34 @@ export type TestStatus = 'PASS' | 'FAIL' | 'N/A';
 
 export type RetestInterval = 3 | 6 | 12 | 24 | 60;
 
+export interface Customer {
+  id?: number;
+  name: string;
+  createdAt: string;
+}
+
+export interface Site {
+  id?: number;
+  customerId: number;
+  address: string;
+  createdAt: string;
+}
+
+export interface SiteLocation {
+  id?: number;
+  siteId: number;
+  name: string;
+  createdAt: string;
+}
+
 export interface JobInfo {
   id: number;
   clientName: string;
   siteAddress: string;
   testerName: string;
   patTesterSerial: string;
+  customerId?: number;
+  siteId?: number;
   updatedAt: string;
 }
 
