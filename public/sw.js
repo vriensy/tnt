@@ -1,16 +1,36 @@
-const CACHE_NAME = 'testtag-v1';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'testtag-v2';
+const SHELL_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon.svg',
 ];
 
+// Vite fingerprints its JS/CSS bundle (e.g. /assets/index-DK3f9a.js), so a
+// static list can never name those files. Instead, fetch index.html itself
+// at install time and pull every /assets/... reference out of it — that's
+// the only reliable way to precache the real bundle for this build.
+async function discoverBundleAssets() {
+  try {
+    const res = await fetch('/index.html', { cache: 'no-store' });
+    const html = await res.text();
+    const matches = html.match(/\/assets\/[^"'>\s]+/g) || [];
+    return [...new Set(matches)];
+  } catch {
+    return [];
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch(() => {});
-    })
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const bundleAssets = await discoverBundleAssets();
+      await cache.addAll(SHELL_ASSETS).catch(() => {});
+      await Promise.all(
+        bundleAssets.map((url) => cache.add(url).catch(() => {}))
+      );
+    })()
   );
   self.skipWaiting();
 });
