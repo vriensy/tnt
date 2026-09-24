@@ -1,9 +1,15 @@
 import { Building2, MapPin, User, Cpu } from 'lucide-react';
 import type { JobInfoState } from '../hooks/useJobInfo';
+import type { Customer, Site } from '../types';
+import { EntityPicker } from './EntityPicker';
 
 interface Props {
   jobInfo: JobInfoState;
   onChange: (patch: Partial<JobInfoState>) => void;
+  customers: Customer[];
+  onAddCustomer: (name: string) => Promise<Customer>;
+  sites: Site[];
+  onAddSite: (address: string) => Promise<Site | undefined>;
 }
 
 function Field({
@@ -36,7 +42,7 @@ function Field({
   );
 }
 
-export function JobHeader({ jobInfo, onChange }: Props) {
+export function JobHeader({ jobInfo, onChange, customers, onAddCustomer, sites, onAddSite }: Props) {
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-3 space-y-2.5 sticky top-0 z-30 shadow-sm">
       <div className="flex items-center gap-2 mb-1">
@@ -48,20 +54,41 @@ export function JobHeader({ jobInfo, onChange }: Props) {
           AS/NZS 3760:2022
         </span>
       </div>
-      <Field
-        icon={Building2}
+
+      <EntityPicker<Customer>
         label="Client Name"
-        value={jobInfo.clientName}
-        onChange={(v) => onChange({ clientName: v })}
+        icon={Building2}
         placeholder="e.g. Acme Corporation"
+        value={jobInfo.clientName}
+        items={customers}
+        getName={(c) => c.name}
+        onChangeText={(v) => onChange({ clientName: v, customerId: undefined })}
+        onSelect={(customer) =>
+          onChange({
+            clientName: customer.name,
+            customerId: customer.id,
+            // A new customer means the previously selected site no longer applies.
+            siteId: undefined,
+            siteAddress: '',
+          })
+        }
+        onAddNew={onAddCustomer}
       />
-      <Field
-        icon={MapPin}
+
+      <EntityPicker<Site>
         label="Site Address"
-        value={jobInfo.siteAddress}
-        onChange={(v) => onChange({ siteAddress: v })}
+        icon={MapPin}
         placeholder="e.g. 123 Main St, Sydney NSW"
+        value={jobInfo.siteAddress}
+        items={sites}
+        getName={(s) => s.address}
+        disabled={!jobInfo.customerId}
+        disabledHint="Select a client first"
+        onChangeText={(v) => onChange({ siteAddress: v, siteId: undefined })}
+        onSelect={(site) => onChange({ siteAddress: site.address, siteId: site.id })}
+        onAddNew={onAddSite}
       />
+
       <div className="grid grid-cols-2 gap-2.5">
         <Field
           icon={User}
