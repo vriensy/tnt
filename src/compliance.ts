@@ -92,6 +92,22 @@ export const QUICK_PRESETS = [
   'Fan Heater',
 ];
 
+/** Splits a tag ID into its non-numeric prefix and trailing number, preserving zero-padding width. */
+export function splitTagId(tagId: string): { prefix: string; num: number; width: number } | null {
+  const match = tagId.match(/^(.*?)(\d+)$/);
+  if (!match) return null;
+  return { prefix: match[1], num: parseInt(match[2], 10), width: match[2].length };
+}
+
+/** Increments whatever tag ID format was last used, regardless of prefix. */
+export function nextTagId(tagId: string): string | null {
+  const parts = splitTagId(tagId);
+  if (!parts) return null;
+  const nextNum = parts.num + 1;
+  const padded = String(nextNum).padStart(parts.width, '0');
+  return `${parts.prefix}${padded}`;
+}
+
 export function calculateNextTestDue(testDate: string, interval: RetestInterval): string {
   const d = new Date(testDate + 'T00:00:00');
   d.setMonth(d.getMonth() + interval);
