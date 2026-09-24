@@ -7,6 +7,8 @@ export interface JobInfoState {
   siteAddress: string;
   testerName: string;
   patTesterSerial: string;
+  customerId?: number;
+  siteId?: number;
 }
 
 const EMPTY: JobInfoState = {
@@ -14,6 +16,8 @@ const EMPTY: JobInfoState = {
   siteAddress: '',
   testerName: '',
   patTesterSerial: '',
+  customerId: undefined,
+  siteId: undefined,
 };
 
 export function useJobInfo() {
@@ -28,6 +32,8 @@ export function useJobInfo() {
           siteAddress: info.siteAddress,
           testerName: info.testerName,
           patTesterSerial: info.patTesterSerial,
+          customerId: info.customerId,
+          siteId: info.siteId,
         });
       }
       setLoaded(true);
@@ -37,7 +43,7 @@ export function useJobInfo() {
   const update = useCallback((patch: Partial<JobInfoState>) => {
     setJobInfo((prev) => {
       const next = { ...prev, ...patch };
-      saveJobInfo(next);
+      saveJobInfo(next as Omit<JobInfo, 'id' | 'updatedAt'>);
       return next;
     });
   }, []);
