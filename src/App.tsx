@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { ClipboardList, Plus, Settings, FileSpreadsheet } from 'lucide-react';
 import type { Asset, RetestInterval } from './types';
 import { useAssets } from './hooks/useAssets';
+import { useCustomers } from './hooks/useCustomers';
+import { useSites } from './hooks/useSites';
+import { useLocations } from './hooks/useLocations';
 import { useJobInfo } from './hooks/useJobInfo';
 import { useServiceWorker } from './hooks/useServiceWorker';
 import { db } from './db';
@@ -16,7 +19,10 @@ type Tab = 'entry' | 'register';
 
 export default function App() {
   const { assets, addAsset, updateAsset, deleteAsset, replaceAll } = useAssets();
+  const { customers, addOrGetCustomer } = useCustomers();
   const { jobInfo, update } = useJobInfo();
+  const { sites, addOrGetSite } = useSites(jobInfo.customerId);
+  const { locations, addOrGetLocation } = useLocations(jobInfo.siteId);
   const { updateAvailable, applyUpdate, canInstall, promptInstall, checkForUpdate } = useServiceWorker();
 
   const [tab, setTab] = useState<Tab>('entry');
@@ -26,6 +32,12 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [toast, setToast] = useState<string | null>(null);
+
+  // A saved sub-location belongs to a specific site — if the site changes,
+  // the previously typed/selected room no longer applies.
+  useEffect(() => {
+    setSubLocation('');
+  }, [jobInfo.siteId]);
 
   useEffect(() => {
     const onOnline = () => setIsOffline(false);
@@ -138,7 +150,14 @@ export default function App() {
       {/* Job Header (sticky below app header) */}
       {tab === 'entry' && (
         <div style={{ marginTop: 0 }}>
-          <JobHeader jobInfo={jobInfo} onChange={update} />
+          <JobHeader
+            jobInfo={jobInfo}
+            onChange={update}
+            customers={customers}
+            onAddCustomer={addOrGetCustomer}
+            sites={sites}
+            onAddSite={addOrGetSite}
+          />
         </div>
       )}
 
@@ -152,6 +171,8 @@ export default function App() {
             jobInfo={jobInfo}
             subLocation={subLocation}
             onSubLocationChange={setSubLocation}
+            locations={locations}
+            onAddLocation={addOrGetLocation}
             retestInterval={retestInterval}
             onRetestIntervalChange={setRetestInterval}
             editingAsset={editingAsset}
