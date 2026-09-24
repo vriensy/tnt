@@ -12,8 +12,8 @@ import {
   Zap,
 } from 'lucide-react';
 import type { Asset, EquipmentClass, RetestInterval, TestStatus } from '../types';
-import { CLASS_THRESHOLDS, DEFECT_REASONS, ACTIONS_TAKEN, QUICK_PRESETS, calculateNextTestDue, generatePassValues, todayString } from '../compliance';
-import { getHighestTagNumber, tagIdExists } from '../db';
+import { CLASS_THRESHOLDS, DEFECT_REASONS, ACTIONS_TAKEN, QUICK_PRESETS, calculateNextTestDue, generatePassValues, nextTagId, splitTagId, todayString } from '../compliance';
+import { getHighestTagId, tagIdExists } from '../db';
 import type { JobInfoState } from '../hooks/useJobInfo';
 
 interface Props {
@@ -72,7 +72,7 @@ export function TagEntryForm({
   const [showFailFields, setShowFailFields] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [resumePrompt, setResumePrompt] = useState<{ tagId: string; number: number } | null>(null);
-  const [tagPrefix, setTagPrefix] = useState('TAG-');
+  const [tagRefreshKey, setTagRefreshKey] = useState(0);
   const tagIdInputRef = useRef<HTMLInputElement>(null);
 
   const thresholds = useMemo(() => CLASS_THRESHOLDS[form.equipmentClass], [form.equipmentClass]);
@@ -83,11 +83,6 @@ export function TagEntryForm({
       setForm({ ...editingAsset });
       setShowFailFields(editingAsset.overallStatus === 'FAIL');
       setAutoIncrement(false);
-      // Extract prefix from tag ID
-      const match = editingAsset.tagId.match(/^([A-Za-z\-]*?)(\d+)$/);
-      if (match) {
-        setTagPrefix(match[1] || 'TAG-');
-      }
     }
   }, [editingAsset]);
 
@@ -106,16 +101,17 @@ export function TagEntryForm({
     }
   }, [jobInfo, subLocation, retestInterval, editingAsset]);
 
-  // Auto-generate next tag ID when not editing
+  // Auto-generate next tag ID from whatever the highest existing tag looks like —
+  // no fixed prefix, it just remembers and increments what you last typed.
   useEffect(() => {
     if (!editingAsset && autoIncrement) {
-      getHighestTagNumber(tagPrefix).then((max) => {
-        const nextNum = max + 1;
-        const padded = String(nextNum).padStart(3, '0');
-        setForm((prev) => ({ ...prev, tagId: `${tagPrefix}${padded}` }));
+      getHighestTagId().then((highest) => {
+        if (!highest) return; // nothing saved yet — leave blank for manual entry
+        const next = nextTagId(highest);
+        if (next) setForm((prev) => ({ ...prev, tagId: next }));
       });
     }
-  }, [tagPrefix, autoIncrement, editingAsset]);
+  }, [autoIncrement, editingAsset, tagRefreshKey]);
 
   // Real-time duplicate check
   const checkDuplicate = useCallback(async (tagId: string) => {
@@ -185,6 +181,7 @@ export function TagEntryForm({
         equipmentClass: prev.equipmentClass,
         description: '',
       }));
+      setTagRefreshKey((k) => k + 1);
     }
   };
 
@@ -226,39 +223,22 @@ export function TagEntryForm({
         equipmentClass: prev.equipmentClass,
         description: '',
       }));
+      setTagRefreshKey((k) => k + 1);
     }
   };
 
-  // After saving with overwrite, check if we should prompt resume
+  // After any save (new or overwrite/edit), if a higher tag number exists
+  // elsewhere in the register, offer to resume from it — no prefix matching needed.
   const handleSave = async (asset: Asset, isEdit: boolean) => {
     await onSave(asset, isEdit);
-    if (isEdit && !editingAsset) {
-      // Overwrite case — check for resume prompt
-      const match = asset.tagId.match(/^([A-Za-z\-]*?)(\d+)$/);
-      if (match) {
-        const prefix = match[1] || 'TAG-';
-        const currentNum = parseInt(match[2], 10);
-        const highest = await getHighestTagNumber(prefix);
-        if (highest > currentNum) {
-          const nextNum = highest + 1;
-          const padded = String(nextNum).padStart(3, '0');
-          setResumePrompt({ tagId: `${prefix}${padded}`, number: nextNum });
-        }
-      }
-    }
-    if (editingAsset) {
-      // After editing, check if tag is lower than highest
-      const match = asset.tagId.match(/^([A-Za-z\-]*?)(\d+)$/);
-      if (match) {
-        const prefix = match[1] || 'TAG-';
-        const currentNum = parseInt(match[2], 10);
-        const highest = await getHighestTagNumber(prefix);
-        if (highest > currentNum) {
-          const nextNum = highest + 1;
-          const padded = String(nextNum).padStart(3, '0');
-          setResumePrompt({ tagId: `${prefix}${padded}`, number: nextNum });
-        }
-      }
+    const savedParts = splitTagId(asset.tagId);
+    if (!savedParts) return;
+    const highest = await getHighestTagId();
+    if (!highest) return;
+    const highestParts = splitTagId(highest);
+    if (highestParts && highestParts.num > savedParts.num) {
+      const next = nextTagId(highest);
+      if (next) setResumePrompt({ tagId: next, number: highestParts.num + 1 });
     }
   };
 
