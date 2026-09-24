@@ -30,20 +30,22 @@ export async function saveJobInfo(info: Omit<JobInfo, 'id' | 'updatedAt'>): Prom
   });
 }
 
-export async function getHighestTagNumber(prefix: string): Promise<number> {
+/**
+ * Returns the full tag ID with the highest trailing number across ALL assets,
+ * irrespective of prefix — e.g. "SITE-042" beats "TAG-007" beats "B12".
+ * Use compliance.ts's nextTagId() on the result to get the next one to use.
+ */
+export async function getHighestTagId(): Promise<string | undefined> {
   const all = await db.assets.toArray();
-  let max = 0;
-  const prefixLower = prefix.toLowerCase();
+  let best: { tagId: string; num: number } | undefined;
   for (const a of all) {
-    const tag = a.tagId;
-    const idx = tag.toLowerCase().indexOf(prefixLower);
-    if (idx === 0) {
-      const numPart = tag.slice(prefix.length).trim();
-      const n = parseInt(numPart, 10);
-      if (!isNaN(n) && n > max) max = n;
-    }
+    const match = a.tagId.match(/^(.*?)(\d+)$/);
+    if (!match) continue;
+    const n = parseInt(match[2], 10);
+    if (isNaN(n)) continue;
+    if (!best || n > best.num) best = { tagId: a.tagId, num: n };
   }
-  return max;
+  return best?.tagId;
 }
 
 export async function tagIdExists(tagId: string): Promise<boolean> {
