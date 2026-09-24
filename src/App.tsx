@@ -17,7 +17,7 @@ type Tab = 'entry' | 'register';
 export default function App() {
   const { assets, addAsset, updateAsset, deleteAsset, replaceAll } = useAssets();
   const { jobInfo, update } = useJobInfo();
-  const { updateAvailable, applyUpdate, canInstall, promptInstall } = useServiceWorker();
+  const { updateAvailable, applyUpdate, canInstall, promptInstall, checkForUpdate } = useServiceWorker();
 
   const [tab, setTab] = useState<Tab>('entry');
   const [subLocation, setSubLocation] = useState('');
@@ -189,6 +189,9 @@ export default function App() {
         assets={assets}
         onReplaceAll={replaceAll}
         onClearAll={handleClearAll}
+        updateAvailable={updateAvailable}
+        onApplyUpdate={applyUpdate}
+        onCheckForUpdate={checkForUpdate}
       />
 
       {/* Toast */}
