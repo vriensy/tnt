@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { addCustomer, deleteCustomer, getAllCustomers } from '../db';
+import { addCustomer, deleteCustomer, getAllCustomers, updateCustomerName } from '../db';
 import type { Customer } from '../types';
 
 export function useCustomers() {
@@ -25,6 +25,14 @@ export function useCustomers() {
     [refresh],
   );
 
+  const renameCustomer = useCallback(
+    async (id: number, name: string): Promise<void> => {
+      await updateCustomerName(id, name);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const removeCustomer = useCallback(
     async (id: number): Promise<void> => {
       await deleteCustomer(id);
@@ -33,5 +41,5 @@ export function useCustomers() {
     [refresh],
   );
 
-  return { customers, loading, addOrGetCustomer, removeCustomer };
+  return { customers, loading, addOrGetCustomer, renameCustomer, removeCustomer, refresh };
 }
