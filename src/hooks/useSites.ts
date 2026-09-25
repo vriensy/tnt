@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { addSite, deleteSite, getSitesForCustomer } from '../db';
+import { addSite, deleteSite, getSitesForCustomer, updateSiteAddress } from '../db';
 import type { Site } from '../types';
 
 /** Sites belonging to the given customer. Refetches whenever customerId changes. */
@@ -32,6 +32,14 @@ export function useSites(customerId: number | undefined) {
     [customerId, refresh],
   );
 
+  const renameSite = useCallback(
+    async (id: number, address: string): Promise<void> => {
+      await updateSiteAddress(id, address);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const removeSite = useCallback(
     async (id: number): Promise<void> => {
       await deleteSite(id);
@@ -40,5 +48,5 @@ export function useSites(customerId: number | undefined) {
     [refresh],
   );
 
-  return { sites, loading, addOrGetSite, removeSite };
+  return { sites, loading, addOrGetSite, renameSite, removeSite, refresh };
 }
