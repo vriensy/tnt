@@ -95,7 +95,20 @@ export async function addCustomer(name: string): Promise<Customer> {
   return { ...customer, id };
 }
 
+export async function updateCustomerName(id: number, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  await db.customers.update(id, { name: trimmed });
+}
+
+// Deleting a customer removes its sites too, and each site removal takes its
+// locations with it — otherwise you'd accumulate orphaned records with no
+// way to reach them through the UI.
 export async function deleteCustomer(id: number): Promise<void> {
+  const orphanedSites = await db.sites.where('customerId').equals(id).toArray();
+  for (const site of orphanedSites) {
+    if (site.id !== undefined) await deleteSite(site.id);
+  }
   await db.customers.delete(id);
 }
 
@@ -119,7 +132,14 @@ export async function addSite(customerId: number, address: string): Promise<Site
   return { ...site, id };
 }
 
+export async function updateSiteAddress(id: number, address: string): Promise<void> {
+  const trimmed = address.trim();
+  if (!trimmed) return;
+  await db.sites.update(id, { address: trimmed });
+}
+
 export async function deleteSite(id: number): Promise<void> {
+  await db.locations.where('siteId').equals(id).delete();
   await db.sites.delete(id);
 }
 
@@ -141,6 +161,12 @@ export async function addLocation(siteId: number, name: string): Promise<SiteLoc
   const loc: SiteLocation = { siteId, name: trimmed, createdAt: new Date().toISOString() };
   const id = await db.locations.add(loc);
   return { ...loc, id };
+}
+
+export async function updateLocationName(id: number, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  await db.locations.update(id, { name: trimmed });
 }
 
 export async function deleteLocation(id: number): Promise<void> {
