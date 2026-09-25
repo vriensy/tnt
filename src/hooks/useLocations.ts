@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { addLocation, deleteLocation, getLocationsForSite } from '../db';
+import { addLocation, deleteLocation, getLocationsForSite, updateLocationName } from '../db';
 import type { SiteLocation } from '../types';
 
 /** Locations (rooms/areas) belonging to the given site. Refetches whenever siteId changes. */
@@ -32,6 +32,14 @@ export function useLocations(siteId: number | undefined) {
     [siteId, refresh],
   );
 
+  const renameLocation = useCallback(
+    async (id: number, name: string): Promise<void> => {
+      await updateLocationName(id, name);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const removeLocation = useCallback(
     async (id: number): Promise<void> => {
       await deleteLocation(id);
@@ -40,5 +48,5 @@ export function useLocations(siteId: number | undefined) {
     [refresh],
   );
 
-  return { locations, loading, addOrGetLocation, removeLocation };
+  return { locations, loading, addOrGetLocation, renameLocation, removeLocation, refresh };
 }
