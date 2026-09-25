@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { X, Download, Upload, FileSpreadsheet, Database, Trash2, Info, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, Download, Upload, FileSpreadsheet, Database, Trash2, Info, RefreshCw, CheckCircle2, Building2, ChevronRight } from 'lucide-react';
 import type { Asset } from '../types';
 import { downloadCSV, downloadJSON } from '../csvExport';
 import { db } from '../db';
@@ -14,6 +14,8 @@ interface Props {
   updateAvailable: boolean;
   onApplyUpdate: () => void;
   onCheckForUpdate: () => Promise<UpdateCheckResult>;
+  customerCount: number;
+  onManageCustomers: () => void;
 }
 
 export function SettingsDrawer({
@@ -25,6 +27,8 @@ export function SettingsDrawer({
   updateAvailable,
   onApplyUpdate,
   onCheckForUpdate,
+  customerCount,
+  onManageCustomers,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -149,6 +153,26 @@ export function SettingsDrawer({
               </div>
             </button>
           )}
+
+          {/* Manage Customers & Sites */}
+          <button
+            onClick={() => {
+              onClose();
+              onManageCustomers();
+            }}
+            className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-gray-200 active:scale-[0.98] transition-transform hover:border-blue-400"
+          >
+            <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+              <Building2 className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div className="text-left flex-1">
+              <div className="font-semibold text-sm text-gray-900">Manage Customers & Sites</div>
+              <div className="text-xs text-gray-500">
+                {customerCount === 0 ? 'No saved customers yet' : `${customerCount} saved customer${customerCount === 1 ? '' : 's'} — rename or delete`}
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-300" />
+          </button>
 
           {/* CSV Export */}
           <button
