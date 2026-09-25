@@ -1,4 +1,4 @@
-const CACHE_NAME = 'testtag-v3';
+const CACHE_NAME = 'testtag-v4';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
