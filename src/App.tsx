@@ -13,15 +13,16 @@ import { JobHeader } from './components/JobHeader';
 import { TagEntryForm } from './components/TagEntryForm';
 import { AssetRegister, SummaryHeader } from './components/AssetRegister';
 import { SettingsDrawer } from './components/SettingsDrawer';
+import { CustomerManager } from './components/CustomerManager';
 import { UpdateBanner, OfflineIndicator } from './components/UpdateBanner';
 
 type Tab = 'entry' | 'register';
 
 export default function App() {
   const { assets, addAsset, updateAsset, deleteAsset, replaceAll } = useAssets();
-  const { customers, addOrGetCustomer } = useCustomers();
+  const { customers, addOrGetCustomer, renameCustomer, removeCustomer } = useCustomers();
   const { jobInfo, update } = useJobInfo();
-  const { sites, addOrGetSite } = useSites(jobInfo.customerId);
+  const { sites, addOrGetSite, refresh: refreshSites } = useSites(jobInfo.customerId);
   const { locations, addOrGetLocation } = useLocations(jobInfo.siteId);
   const { updateAvailable, applyUpdate, canInstall, promptInstall, checkForUpdate } = useServiceWorker();
 
@@ -30,6 +31,7 @@ export default function App() {
   const [retestInterval, setRetestInterval] = useState<RetestInterval>(12);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [customerManagerOpen, setCustomerManagerOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -99,6 +101,33 @@ export default function App() {
     downloadCSV(assets, `asset-register-${dateStr}.csv`);
     showToast('CSV exported');
   }, [assets, showToast]);
+
+  // Keeps the current job's selection consistent if the customer/site it
+  // points at gets renamed or deleted from the management panel.
+  const handleCustomerChanged = useCallback(
+    (id: number, newName: string | null) => {
+      if (jobInfo.customerId === id) {
+        update(
+          newName === null
+            ? { customerId: undefined, clientName: '', siteId: undefined, siteAddress: '' }
+            : { clientName: newName },
+        );
+      }
+    },
+    [jobInfo.customerId, update],
+  );
+
+  const handleSiteChanged = useCallback(
+    (id: number, newAddress: string | null) => {
+      if (jobInfo.siteId === id) {
+        update(newAddress === null ? { siteId: undefined, siteAddress: '' } : { siteAddress: newAddress });
+      }
+      // Same underlying customerId either way — refetch so the Site Address
+      // picker reflects the change immediately rather than on next mount.
+      refreshSites();
+    },
+    [jobInfo.siteId, update, refreshSites],
+  );
 
   const hasBanner = updateAvailable || canInstall;
   const bannerHeight = hasBanner ? (updateAvailable && canInstall ? 76 : 44) : 0;
@@ -213,6 +242,19 @@ export default function App() {
         updateAvailable={updateAvailable}
         onApplyUpdate={applyUpdate}
         onCheckForUpdate={checkForUpdate}
+        customerCount={customers.length}
+        onManageCustomers={() => setCustomerManagerOpen(true)}
+      />
+
+      {/* Customer / Site / Location Manager */}
+      <CustomerManager
+        open={customerManagerOpen}
+        onClose={() => setCustomerManagerOpen(false)}
+        customers={customers}
+        onRenameCustomer={renameCustomer}
+        onDeleteCustomer={removeCustomer}
+        onCustomerChanged={handleCustomerChanged}
+        onSiteChanged={handleSiteChanged}
       />
 
       {/* Toast */}
